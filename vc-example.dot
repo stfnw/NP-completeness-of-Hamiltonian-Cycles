@@ -1,0 +1,10 @@
+graph G {
+    graph[bgcolor="transparent"]
+    node[shape=circle]
+    a -- b
+    b -- c
+    a -- c
+    b -- d
+    b -- e
+    b -- f
+}

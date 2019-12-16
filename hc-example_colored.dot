@@ -1,0 +1,14 @@
+graph G {
+    graph[bgcolor="transparent"]
+    node[shape=circle,style=filled,fillcolor=green]
+    {
+        edge[color=green,penwidth=3]
+        a -- e
+        b -- c
+        e -- c
+        a -- d
+        d -- b
+    }
+    a -- c
+    a -- b
+}

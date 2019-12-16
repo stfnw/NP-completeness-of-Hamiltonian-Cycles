@@ -1,0 +1,834 @@
+\documentclass[usepdftitle=false]{beamer}
+
+\usepackage{pgfpages}
+% \setbeameroption{show notes on second screen}
+
+\usetheme{Darmstadt}
+
+\usecolortheme{beaver}
+
+\usefonttheme[onlymath]{serif}
+
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[ngerman]{babel}
+
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{csquotes}
+
+\usepackage[backend=biber,style=numeric,sorting=none,url=false]{biblatex}
+\addbibresource{bibliography.bib}
+
+\usepackage{array}
+\usepackage{mathtools}
+
+\DeclareSymbolFont{letters}{OML}{ztmcm}{m}{it}
+
+\usepackage{stmaryrd} % for contradiction lightning symbol
+
+\usepackage{tikz}
+\usetikzlibrary{automata,positioning,arrows,shapes,decorations,calc}
+
+\pgfdeclarelayer{background}
+\pgfdeclarelayer{foreground}
+\pgfsetlayers{background,main,foreground}
+
+% see https://tex.stackexchange.com/questions/20425/z-level-in-tikz/20426#20426
+\makeatletter
+\pgfkeys{%
+  /tikz/on layer/.code={
+    \pgfonlayer{#1}\begingroup
+    \aftergroup\endpgfonlayer
+    \aftergroup\endgroup
+  },
+  /tikz/node on layer/.code={
+    \gdef\node@@on@layer{%
+      \setbox\tikz@tempbox=\hbox\bgroup\pgfonlayer{#1}\unhbox\tikz@tempbox\endpgfonlayer\egroup}
+    \aftergroup\node@on@layer
+  },
+  /tikz/end node on layer/.code={
+    \endpgfonlayer\endgroup\endgroup
+  }
+}
+\def\node@on@layer{\aftergroup\node@@on@layer}
+\makeatother
+
+
+% https://tex.stackexchange.com/questions/6135/how-to-make-beamer-overlays-with-tikz-node
+\tikzset{onslide/.code args={<#1>#2}{%
+		\only<#1>{\pgfkeysalso{#2}} % \pgfkeysalso doesn't change the path
+}}
+
+
+% https://tex.stackexchange.com/questions/66532/proofs-in-beamer
+\makeatletter
+\newenvironment<>{proofs}[1][\proofname]{%
+    \par
+    \def\insertproofname{#1\@addpunct{.}}%
+    \usebeamertemplate{proof begin}#2}
+  {\usebeamertemplate{proof end}}
+\newenvironment<>{proofc}{%
+  \setbeamertemplate{proof begin}{\begin{block}{}}
+    \par
+    \usebeamertemplate{proof begin}}
+  {\usebeamertemplate{proof end}}
+\newenvironment<>{proofe}{%
+    \par
+    \pushQED{\qed}
+    \setbeamertemplate{proof begin}{\begin{block}{}}
+    \usebeamertemplate{proof begin}}
+  {\popQED\usebeamertemplate{proof end}}
+\makeatother
+
+
+\beamertemplatenavigationsymbolsempty
+\newcounter{slideinframe}
+\defbeamertemplate*{footline}{slide in frame number}{%
+    \hfill%
+    \usebeamercolor[fg]{page number in head/foot}%
+    \usebeamerfont{page number in head/foot}%
+    \ifnum\insertframeendpage>\insertframestartpage
+        \setcounter{slideinframe}{\numexpr\thepage-\insertframestartpage+1}
+        \insertframenumber{}\,-\,\theslideinframe
+    \else
+        \insertframenumber{}
+    \fi%
+    %\;/\;\inserttotalframenumber
+        \kern1em\vskip2pt%
+}
+\setbeamertemplate{theorems}[numbered]
+
+
+% \DeclareMathOperator{\Paths}{Paths}
+
+\newcommand{\VC}{\textsc{Vertex Cover}}
+\newcommand{\HC}{\textsc{Hamiltonian Cycle}}
+\newcommand{\HP}{\textsc{Hamiltonian Path}}
+\newcommand{\HPP}{\textsc{Hamiltonian Path Between Two Points}}
+\newcommand{\LP}{\textsc{Longest Path}}
+
+
+\title[Hamiltonian Cycle]{NP-Vollständigkeit von Hamiltonian Cycles}
+\subtitle{durch Reduktion von Vertex Covern}
+\author{Stefan Walter}
+\institute{Universit\"a{}t Leipzig  \\
+    \tiny 10-202-2112, Complexity Theory
+}
+\date{16. Dezember 2019}
+
+\hypersetup{
+    pdfinfo={
+        Author={Stefan Walter},
+        Title={NP-Completeness of Hamiltonian Cycles by reduction from Vertex Covers},
+        Subject={Complexity Theory Seminar}
+    }
+}
+
+
+\begin{document}
+
+\frame[typeset second]{\only<second:0>{\titlepage}}
+
+\begin{frame}{Literatur}
+    \fullcite[Chapter 3.1.4, p.~56 to 60]{np}
+    \note{größtenteils direkt übernommen}
+\end{frame}
+
+
+\section{Problemdefinitionen}
+
+\begin{frame}
+    \begin{exampleblock}{\VC{} (Knotenüberdeckung)}
+        \alert{Eingabe:} Ein Graph $G = (V,E)$ und $K \in \mathbb{N}_+$ mit $K \leq |V|$.
+
+        \alert{Ausgabe:} Existiert ein \alert{Vertex Cover} der Größe maximal $K$ für $G$?  \\
+        D.\,h. eine Menge $V'\subseteq V$ mit
+        \begin{itemize}
+            \item $|V'| \leq K$
+            \item $\displaystyle
+                \forall \, \{u,v\} \in E: \; u \in V' \quad \lor \quad v \in V'
+                $
+        \end{itemize}
+    \end{exampleblock}
+
+    \begin{overprint}
+        \onslide<2>\centering\includegraphics[width=5cm]{vc-example.pdf}
+        \onslide<3->\centering\includegraphics[width=5cm]{vc-example_colored.pdf}
+    \end{overprint}
+    \note{
+        \begin{itemize}
+            \item \VC{} ist so eine Arte Erreichbarkeit aller Kanten durch eine bestimmte Menge von Knoten
+            \item hier nur die Berechnungsvarianten
+            \item hier ungerichtete Graphen; \\
+                Problem für gerichtete auch in NP
+        \end{itemize}
+    }
+\end{frame}
+
+\begin{frame}
+    \begin{exampleblock}{\HC{} (Hamiltonkreis)}
+        \alert{Eingabe:} Ein Graph $G = (V,E)$
+
+        \alert{Ausgabe:} Enthält $G$ einen \alert{Hamiltonian Cycle}?  \\
+        D.\,h. eine Knoten-Folge $(v_1,v_2,\dots,v_n)$ mit
+        \begin{itemize}
+            \item $n = |V|$
+            \item  $\forall \, i \in \mathbb{N}, 1\leq i < n: \; \{v_i,v_{i+1}\} \in E$
+                und
+                $\{v_n,v_1\} \in E$
+        \end{itemize}
+    \end{exampleblock}
+
+    \begin{overprint}
+        \onslide<2>\centering\includegraphics[width=3.3cm]{hc-example.pdf}
+        \onslide<3->\centering\includegraphics[width=3.3cm]{hc-example_colored.pdf}
+    \end{overprint}
+
+    \note{
+        \begin{itemize}
+            \item Pfad, der alle Knoten enthält und im selben Knoten beginnt und endet
+            \item ähnlich zum TSP, nur nicht gewichtet
+            \item als Sprache formuliert: Menge aller Graphen mit HC
+        \end{itemize}
+    }
+\end{frame}
+
+
+\section{NP-Vollständigkeit von \HC}
+
+\begin{frame}{Vorgehen beim Zeigen von NP-Vollständigkeit}
+    \begin{exampleblock}{Vorgehen}
+        \begin{itemize}
+            \item $\HC \in NP$
+            \item \HC{} ist NP-schwer:
+                $\forall \, L' \in NP: \; L' \preceq_L \HC$
+        \end{itemize}
+    \end{exampleblock}
+
+    Notizen:
+    \begin{itemize}
+        \item hier mit $\VC \preceq_L \HC$
+        \item Annahme: \VC{} ist NP-vollständig
+    \end{itemize}
+
+    \note{
+        \begin{itemize}
+            \item alle Probleme in NP lassen sich darauf reduzieren
+
+            \item VC ist np schwer, alle auf vc reduzieren,
+                VC auf HC reduzieren => alle auf HZ reduzieren
+        \end{itemize}
+    }
+\end{frame}
+
+
+\begin{frame}{Beweisidee}
+    \begin{proofs}[Beweisidee]
+        $\HC{} \in NP$:
+        \begin{itemize}
+            \item rate Knotenfolge $(v_1,v_2,\dots,v_n) \in V^{|V|}$ nichtdeterministisch
+            \item teste, ob Folge die Bedingung erfüllt \\
+                \quad $\Rightarrow$ polynomiell
+        \end{itemize}
+    \end{proofs}
+    \note{
+        \begin{itemize}
+            \item werden hier nicht strikt beweisen / erklären
+            \item Ansatz / Konstruktion aus dem Buch zeigen
+            \item dazu habe ich mal Beispiel entworfen, die werden wir durchgehen
+        \end{itemize}
+    }
+\end{frame}
+
+\begin{frame}{Reduktion}
+    \begin{proofc}
+        NP-schwer: $\VC \preceq_L \HC$
+
+        \alert{Eingabe:} Graph $G = (V,E)$ und $K \in \mathbb{N}_+, K \leq |V|$
+
+        \alert{Ausgabe:} Graph $G' = (V',E')$,
+        sodass
+        \[
+            (G,K) \in \VC \iff G' \in \HC
+        \]
+    \end{proofc}
+    \note{
+        \begin{itemize}
+            \item Umkodieren/Umformulieren/Transformieren, sodass neuer Graph genau dann HC hat,
+                wenn alter Graph VC maximal K hat
+
+            \item wenn wir HC lösen können, können wir VC lösen
+
+            \item Logarithmischem Platz
+        \end{itemize}
+    }
+\end{frame}
+
+\colorlet{darkgreen}{green!60!black}
+\tikzset{
+    shorten >= 1pt,
+    node distance = 1cm,
+    place/.style={circle,thick,minimum size=2mm,draw},
+    every path/.style={-,very thick},
+    highlighted/.style={line width=4pt,darkgreen,on layer=foreground},
+    route1/.style={},
+    route2/.style={},
+    route3/.style={},
+}
+
+\newcommand{\ename}{e}
+\newcommand{\uname}{u}
+\newcommand{\vname}{v}
+\newcommand{\COVTEST}{
+    \node[place] (\uname\ename1) {};
+    \node[place] (\uname\ename2) [below=of \uname\ename1] {};
+    \node[place] (\uname\ename3) [below=of \uname\ename2] {};
+    \node[place] (\uname\ename4) [below=of \uname\ename3] {};
+    \node[place] (\uname\ename5) [below=of \uname\ename4] {};
+    \node[place] (\uname\ename6) [below=of \uname\ename5] {};
+
+    \node[place] (\vname\ename1) [right=3cm of \uname\ename1] {};
+    \node[place] (\vname\ename2) [below=of \vname\ename1] {};
+    \node[place] (\vname\ename3) [below=of \vname\ename2] {};
+    \node[place] (\vname\ename4) [below=of \vname\ename3] {};
+    \node[place] (\vname\ename5) [below=of \vname\ename4] {};
+    \node[place] (\vname\ename6) [below=of \vname\ename5] {};
+
+    \node[left=0.2em of \uname\ename1] {(\uname,\ename,1)};
+    \node[left=0.2em of \uname\ename2] {(\uname,\ename,2)};
+    \node[left=0.2em of \uname\ename3] {(\uname,\ename,3)};
+    \node[left=0.2em of \uname\ename4] {(\uname,\ename,4)};
+    \node[left=0.2em of \uname\ename5] {(\uname,\ename,5)};
+    \node[left=0.2em of \uname\ename6] {(\uname,\ename,6)};
+    \node[right=0.2em of \vname\ename1] {(\vname,\ename,1)};
+    \node[right=0.2em of \vname\ename2] {(\vname,\ename,2)};
+    \node[right=0.2em of \vname\ename3] {(\vname,\ename,3)};
+    \node[right=0.2em of \vname\ename4] {(\vname,\ename,4)};
+    \node[right=0.2em of \vname\ename5] {(\vname,\ename,5)};
+    \node[right=0.2em of \vname\ename6] {(\vname,\ename,6)};
+
+    \draw[on layer=background]
+        (\uname\ename1) edge [route1,route2,route3]    (\uname\ename2)
+        (\uname\ename2) edge [route1,route2,route3]    (\uname\ename3)
+        (\uname\ename3) edge [route2,route3]           (\uname\ename4)
+        (\uname\ename4) edge [route1,route2,route3]    (\uname\ename5)
+        (\uname\ename5) edge [route1,route2,route3]    (\uname\ename6)
+
+        (\vname\ename1) edge [route1,route2,route3]    (\vname\ename2)
+        (\vname\ename2) edge [route1,route2,route3]    (\vname\ename3)
+        (\vname\ename3) edge [route1,route2]           (\vname\ename4)
+        (\vname\ename4) edge [route1,route2,route3]    (\vname\ename5)
+        (\vname\ename5) edge [route1,route2,route3]    (\vname\ename6)
+
+        (\uname\ename3) edge [route1]                  (\vname\ename1)
+        (\vname\ename3) edge [route3]                  (\uname\ename1)
+        (\uname\ename6) edge [route3]                  (\vname\ename4)
+        (\vname\ename6) edge [route1]                  (\uname\ename4)
+    ;
+}
+\newcommand{\COVTESTINOUT}{
+    \draw
+        (\uname\ename1) edge[bend right,dashed,route1,route2]  ++(-4em,4em)
+        (\uname\ename6) edge[bend left,dashed,route1,route2]   ++(-4em,-4em)
+        (\vname\ename1) edge[bend left,dashed,route2,route3]   ++(4em,4em)
+        (\vname\ename6) edge[bend right,dashed,route2,route3]  ++(4em,-4em)
+    ;
+}
+
+
+\begin{frame}{Konstruktions-Idee}
+    \begin{proofc}
+        \begin{minipage}{0.65\textwidth}
+            \begin{itemize}
+                \item $K$ "`Selektor"'-Knoten $a_1, a_2, \dots, a_K$
+                \item $|E|$ "`Cover-Testing"'-Komponenten (abgekürzt CTK)
+            \end{itemize}
+
+            \pause
+
+            \vspace*{1cm}
+            z.\,B. für $e = \{u,v\} \in E$
+        \end{minipage}\hfill\begin{minipage}{0.30\textwidth}
+            \begin{center}
+                \scalebox{0.5}{
+                    \begin{tikzpicture}
+                        \COVTEST
+                        \COVTESTINOUT
+                    \end{tikzpicture}
+                }
+            \end{center}
+        \end{minipage}
+    \end{proofc}
+
+    \note{
+        \begin{itemize}
+            \item für jede Kante eine Cover-Testing-Komponente
+        \end{itemize}
+    }
+\end{frame}
+
+
+\begin{frame}{Konstruktions-Idee}
+    \begin{proofc}
+        Pfade durch Cover-Testing-Komponente bei Hamiltonkreis in $G'$: \\[1em]
+
+        \scalebox{0.44}{
+            \begin{tikzpicture}[
+                    route1/.style={highlighted}
+                ]
+                \COVTEST
+                \COVTESTINOUT
+            \end{tikzpicture}
+        }
+        \hfill
+        \scalebox{0.44}{
+            \begin{tikzpicture}[
+                    route2/.style={highlighted}
+                ]
+                \COVTEST
+                \COVTESTINOUT
+            \end{tikzpicture}
+        }
+        \hfill
+        \scalebox{0.44}{
+            \begin{tikzpicture}[
+                    route3/.style={highlighted}
+                ]
+                \COVTEST
+                \COVTESTINOUT
+            \end{tikzpicture}
+        }
+    \end{proofc}
+
+    \note{
+        \begin{itemize}
+            \item so aufgebaut, dass jeder HC in $G'$ die nur auf bestimmte
+                Weise durchlaufen kann
+            \item CTK werden über 4 Knoten mit anderen CTK und Selektor verbunden
+            \item HC geht durch alle Knoten, also auch durch alle in jeder CTK
+            \item z.B. nicht ue1 -> ve6 raus
+            \item Möglichkeiten entsprechen Knoten im Vertex Cover:
+                \begin{itemize}
+                    \item u und nicht v
+                    \item u und v
+                    \item v und nicht u
+                \end{itemize}
+        \end{itemize}
+    }
+\end{frame}
+
+
+\begin{frame}{Vollständige Reduktions-Konstruktion}
+    \begin{proofc}
+        $G' = (V',E')$ mit
+        \[
+            \begin{aligned}[t]
+                V' &=  \underbrace{
+                        \left\{ a_i \mid 1 \leq i \leq K \right\} 
+                    }_{\text{Selektor}}
+                    \cup \underbrace{
+                        \left( \bigcup_{e\in E} V'_e \right)
+                    }_{\text{Cover-Testing}}  \\
+                E' &= \underbrace{
+                        \left( \bigcup_{e \in E} E'_e \right)
+                    }_{\text{Cover-Testing}}
+                    \cup \left( \bigcup_{v \in V} E'_v \right) \cup E''
+            \end{aligned}
+        \]
+    \end{proofc}
+    \note{
+        \begin{itemize}
+            \item erstmal viel, aber explizit auf einmal
+            \item Selektoren
+        \end{itemize}
+    }
+\end{frame}
+
+
+\begin{frame}{Vollständige Reduktions-Konstruktion}
+    \begin{proofc}
+        (für $e = \{ u,v \}  \in E$)
+        \[
+            \begin{aligned}[t]
+                V'_e &= \left\{ (u,e,i), (v,e,i) \mid 1 \leq i \leq 6 \right\}  \\
+                E'_e &= \Big\{ \{ (u,e,i), (u,e,i+1) \}, \{ (v,e,i), (v,e,i+1) \} \mid 1 \leq i \leq 5 \Big\}  \\
+                     &\qquad \cup \Big\{ \{ (u,e,3), (v,e,1) \}, \{ (v,e,3), (u,e,1) \} \Big\}  \\
+                     &\qquad \cup \Big\{ \{ (u,e,6), (v,e,4) \}, \{ (v,e,6), (u,e,4) \} \Big\}  \\
+                E'_v &= \Big\{ \{ (v,e_{v[i]},6), (v,e_{v[i+1]},1) \} \mid 1 \leq i < deg(v) \Big\}  \\
+                E'' &= \Big\{ \{ a_i, (v,e_{v[1]},1) \}, \; \{ a_i, (v, e_{v[deg(v)]},6) \} \mid 1 \leq i \leq K, v \in V \Big\}
+            \end{aligned}
+        \]
+    \end{proofc}
+    \note{
+        \begin{itemize}
+            \item $V'_e$ und $E'_e$ CTK $\implies$ entspricht Kanten
+            \item $E'_v$ und $E''$ Indizes: für jeden Knoten alle benachbarten Kanten irgendwie durchnummerieren / ordnen
+            \item $E'_v$ Verbindungen CTK untereinander $\implies$ entspricht Knoten / Struktur  \\
+                wir verbinden alle CTKs die im ursprünglichen $G$ benachbarte
+                Kanten sind, also vom selben Knoten ausgehen
+            \item $E''$ Verbindungen CTK und Selektor  \\
+                durch $E'_v$ teilverbundene CTKs, die Enden dieser verbinden wir mit Selektoren  \\
+                mit jedem Selektor
+        \end{itemize}
+    }
+\end{frame}
+
+
+\begin{frame}{Konstruktion Beispiel $\in VC$}
+    \begin{exampleblock}{}
+        \begin{minipage}{0.15\textwidth}
+            \includegraphics[width=\linewidth]{construction_in_vc.pdf}
+
+            \begin{overprint}
+                \onslide<3-4>$V'_e, E'_e$
+                \onslide<5>$E'_v$
+                \onslide<6>$a_i$
+                \onslide<7>$E''$
+                \onslide<8>$G' \in HC$
+            \end{overprint}
+        \end{minipage}\hfill\begin{minipage}{0.85\textwidth}
+            \begin{overprint}
+                \onslide<1>\[
+                        G = (V,E) = \Big( \{a,b,c\}, \Big\{ \{a,b\}, \{b,c\} \Big\} \Big) \qquad K=1
+                    \]
+                \onslide<2->\[
+                        G = (V,E) = \Big( \{a,b,c\}, \Big\{ \underbrace{\{a,b\}}_{e_1}, \underbrace{\{b,c\}}_{e_2} \Big\} \Big) \qquad K=1
+                    \]
+            \end{overprint}
+
+            \begin{center}
+                \scalebox{0.45}{
+                    \begin{tikzpicture}[
+                            COV/.pic={\COVTEST},
+                            COVROT/.pic={
+                                \begin{scope}[rotate=90,transform shape]
+                                    \COVTEST
+                                \end{scope}
+                            },
+                            every path/.append style={opacity=0},
+                            rounded corners=10pt
+                        ]
+                        % place node at top left corner with a small margin to prevent the image from shifting on highlighting otherwise outer paths
+                        % ugly hack, but I don't know better ...
+                        \node at (-2.8,1) {};
+
+                        \begin{scope}[
+                                every path/.append style={onslide=<3->{opacity=1}},
+                                route3/.style={onslide=<8->{highlighted}}
+                            ]
+                            \renewcommand{\ename}{e1}\renewcommand{\uname}{a}\renewcommand{\vname}{b}
+                            \pic at (0,0) {COV};
+                        \end{scope}
+
+                        \begin{scope}[
+                                every path/.append style={onslide=<4->{opacity=1}},
+                                route1/.style={onslide=<8->{highlighted}}
+                            ]
+                            \renewcommand{\ename}{e2}\renewcommand{\uname}{b}\renewcommand{\vname}{c}
+                            \pic at (10,0) {COV};
+                        \end{scope}
+
+                        \node[place,below=3cm,onslide=<6->{opacity=1}] (a1) at ($(be16)!0.5!(be26)$) {$a_{1}$};
+
+                        % E'_v
+                        \begin{scope}[
+                                every path/.append style={onslide=<5->{opacity=1}},
+                                every node/.style={}
+                            ]
+                            \draw[onslide=<8->{highlighted}]
+                                (be16) -- ++(0,-0.5)    -- ++(2,0) coordinate (temp1)
+                                (be21) -- ++(0,0.5)     -- ++(-2,0) coordinate (temp2)
+                                (temp1) -- (temp2)
+                            ;
+                        \end{scope}
+
+                        % E''
+                        \begin{scope}[
+                                every path/.append style={onslide=<7->{opacity=1}}
+                            ]
+                            \draw
+                                (ae11) -- ++(0,0.5)     -- ++(-2,0)     -- ++(0,-8.5)   -- (a1)
+                                (ae16) -- ++(0,-0.5)    -- (a1)
+                                (ce21) -- ++(0,0.5)     -- ++(3,0)      -- ++(0,-10)    -- (a1)
+                                (ce26) -- ++(0,-0.5)    -- (a1)
+                            ;
+                            \draw[onslide=<8->{highlighted}]
+                                (be11) -- ++(0,1)       -- ++(-6,0)     -- ++(0,-10)    -- (a1)
+                                (be26) -- ++(0,-0.5)    -- (a1)
+                            ;
+                        \end{scope}
+                    \end{tikzpicture}
+                }
+            \end{center}
+        \end{minipage}
+    \end{exampleblock}
+
+    \note{
+        \begin{itemize}
+            \item Kanten nummerieren
+            \item CTK für e1 und e2
+            \item $E'_v$: verbinden CTKs aller benachbarten Kanten, \\
+                hier nur bei b
+            \item Selektor-Knoten
+            \item $E''$ verbinden aller noch offenen Knoten in CTK mit jedem Selektor-Knoten
+            \item Ablesen von VC über Pfad:  \\
+                später sehen wir: jeder Pfad in HK von Selektor zurück entspricht einem Knoten in $G$  \\
+                also hier nur eine Möglichkeit: b
+        \end{itemize}
+    }
+\end{frame}
+
+
+\begin{frame}{Konstruktion Beispiel $\not\in VC$}
+    \begin{exampleblock}{}
+        \begin{minipage}{0.13\textwidth}
+            \includegraphics[width=\linewidth]{construction_not_in_vc.pdf}
+
+            \begin{overprint}
+                \onslide<3-5>$V'_e, E'_e$
+                \onslide<6>$E'_v$
+                \onslide<7>$a_i$
+                \onslide<8>$E''$
+                \onslide<9->$G' \not\in HC$
+            \end{overprint}
+        \end{minipage}\hfill\begin{minipage}{0.87\textwidth}
+            \begin{overprint}
+                \onslide<1>\[
+                        G = (V,E) = \Big( \{a,b,c\}, \Big\{ \{a,b\}, \{b,c\}, \{c,a\} \Big\} \Big) \quad K=1
+                    \]
+                \onslide<2->\[
+                        G = (V,E) = \Big( \{a,b,c\}, \Big\{
+                            \underbrace{\{a,b\}}_{e_1},
+                            \underbrace{\{b,c\}}_{e_2},
+                            \underbrace{\{c,a\}}_{e_3}
+                        \Big\} \Big) \quad K=1
+                    \]
+            \end{overprint}
+
+            \begin{center}
+                \scalebox{0.32}{
+                    \begin{tikzpicture}[
+                            COV/.pic={\COVTEST},
+                            every path/.append style={opacity=0},
+                            rounded corners=10pt
+                        ]
+                        \begin{scope}[
+                                rotate=90,transform shape,
+                                % xscale=-1,
+                                every path/.append style={onslide=<3->{opacity=1}},
+                            ]
+                            \renewcommand{\ename}{e1}\renewcommand{\uname}{a}\renewcommand{\vname}{b}
+                            \pic at (0,0) {COV};
+                        \end{scope}
+
+                        \begin{scope}[
+                                rotate=90,transform shape,
+                                every path/.append style={onslide=<4->{opacity=1}},
+                            ]
+                            \renewcommand{\ename}{e2}\renewcommand{\uname}{b}\renewcommand{\vname}{c}
+                            \pic at (0,-10) {COV};
+                        \end{scope}
+
+                        \begin{scope}[
+                                rotate=90,transform shape,
+                                every path/.append style={onslide=<5->{opacity=1}},
+                            ]
+                            \renewcommand{\ename}{e3}\renewcommand{\uname}{c}\renewcommand{\vname}{a}
+                            \pic at (0,-20) {COV};
+                        \end{scope}
+
+                        \node[place,below=5cm,onslide=<7->{opacity=1}] (a1) at ($(be23)!0.5!(be24)$) {$a_{1}$};
+
+                        % E'_v
+                        \begin{scope}[
+                                every path/.append style={onslide=<6->{opacity=1}}
+                            ]
+                            \draw
+                                (ae16)  -- ++(0.5,0)   -- ++(0,-2.5)    -- ++(10.5,0)   -- (ae31)
+                                (be16)  -- (be21)
+                                (ce26)  -- (ce31)
+                            ;
+                        \end{scope}
+
+                        % E''
+                        \begin{scope}[
+                                every path/.append style={onslide=<8->{opacity=1}}
+                            ]
+
+                            \draw
+                                (ae11)  -- ++(-0.5,0)   -- ++(0,-2)     -- (a1)
+                                (ae36)  -- ++(1,0)      -- ++(0,-6)     -- (a1)
+                                (be11)  -- ++(-1,0)     -- ++(0,-6)     -- (a1)
+                                (be26)  -- ++(0.5,0)    -- ++(0,-2)     -- (a1)
+                                (ce21)  -- ++(-0.5,0)   -- ++(0,2)      -- ++(-11,0)    -- ++(0,-9)     -- (a1)
+                                (ce36)  -- ++(0.5,0)    -- ++(0,-2)     -- (a1)
+                            ;
+                        \end{scope}
+                    \end{tikzpicture}
+                }
+            \end{center}
+        \end{minipage}
+    \end{exampleblock}
+    \note{
+        \begin{itemize}
+            \item kein HC, da: beginnend in a1 alle Kanten durchtesten:  \\
+                immer eine CTK nicht drin
+        \end{itemize}
+    }
+\end{frame}
+
+
+\begin{frame}{Erklärungsversuch Korrektheit Reduktion}
+    \begin{proofc}
+        \begin{itemize}
+            \item Konstruktion von $G'$ aus $G$ und $K$ in logarithmischem Platz
+                \note{erklären! -- Ausgabeband unbeschränkt, über alle Knoten / Kanten iterieren}
+            \item Klarmachen, dass Reduktion korrekt ist
+        \end{itemize}
+    \end{proofc}
+\end{frame}
+
+
+\begin{frame}{Erklärungsversuch Korrektheit Reduktion}
+    \note{
+        \begin{itemize}
+            \item nicht strikt, sehr informell
+            \item bisschen abgewandelt vom Buch
+        \end{itemize}
+    }
+    \begin{proofc}
+        \[
+            (G,K) \in \VC \impliedby G' \in \HC
+        \]
+        \pause
+
+        Existiere ein Hamiltonkreis in $G'$.  \pause
+        CTKs in $G'$ entsprechen Kanten in $G$ (bijektiv).  \pause
+        Betrachte alle Teilpfade, die in einem Selektor-Knoten in $G'$ beginnen und enden und zwischendurch keinen solchen beinhalten.  \pause
+        Jeder solche Pfad entspricht bijektiv einem Knoten in $G$; und alle darauf liegenden CTKs entsprechen genau den an diesem Knoten anliegenden Kanten in $G$.  \pause
+        Da im Hamiltonkreis alle Knoten in $G'$ enthalten sind (damit auch alle CTKs), sind in $G$ alle den CTKs entsprechenden Kanten durch die entsprechenden Knoten erreichbar.  \pause
+        Also existiert ein Vertex-Cover der Größe maximal $K$ für $G$.
+    \end{proofc}
+\end{frame}
+
+
+\begin{frame}{Erklärungsversuch Korrektheit Reduktion}
+    \begin{proofc}
+        \[
+            (G,K) \in \VC \implies G' \in \HC
+        \]
+        \pause
+
+        Sei $V^* \subseteq V$ ein Vertex-Cover für $G$ mit $|V^*| \leq K$.  \pause
+        Sei o.B.d.A. $|V^*| = K$ mit $V^* = \{v_1,v_2,\dots,v_K\}$  (im Zweifel minimales Cover mit weiteren Knoten auffüllen).
+    \end{proofc}
+\end{frame}
+
+
+\begin{frame}{Erklärungsversuch Korrektheit Reduktion}
+    \begin{proofc}
+        Die folgenden Kanten bilden einen Hamiltonkreis:  \pause
+        \begin{itemize}[<+->]
+            \item $\forall \, e = \{u,v\} \in E$ die entsprechenden Kanten innerhalb CTKs; 
+                je nachdem, ob $\{u,v\} \cap V^*$ gleich $\{u\}$, $\{u,v\}$ oder $\{v\}$ ist  \\
+                (ein Fall trifft immer zu, da $V^*$ Vertex-Cover ist)
+
+            \item Verbindungen zwischen den CTKs:
+                $\displaystyle
+                    \forall \, 1 \leq i \leq K: \; E_{v_i}'
+                $
+
+            \item Verbindungen zw. Selektor-Knoten und Beginn CTK-Ketten:
+                \[
+                    \forall \, 1 \leq i \leq K: \; \{ a_i, (v_i, e_{v_i [1]}, 1) \}
+                \]
+
+            \item Verbindungen zw. Selektor-Knoten und Ende CTK-Ketten:
+                \[
+                    \begin{aligned}[t]
+                        \forall \, 1 \leq i < K: \; \{ a_{i+1}, (v_i, e_{v_i [deg(v_i)]}, 6) \}  \\
+                        \{ a_1, (v_K, e_{v_K [deg(v_K)]}, 6) \}
+                    \end{aligned}
+                \]
+        \end{itemize}
+    \end{proofc}
+
+    \note{
+        \begin{itemize}
+            \item explizite angabe
+            \item so teilverbundene CTK Ketten
+            \item für jeden Knoten in VC
+
+            \item ohne Beweis, klarmachen
+            \item Erläutern, ist genau der HC im Beispiel
+        \end{itemize}
+    }
+\end{frame}
+
+
+\section{Ausblick}
+
+\begin{frame}{Varianten}
+    \begin{itemize}
+        \item \HP{}: \\
+            wie \HC{}, nur ohne Bedingung $\{v_n,v_1\} \in E$
+
+        \item \HPP{}: \\
+            wie \HP{}, nur expliziter Start- und Endknoten
+    \end{itemize}
+
+    $\Rightarrow$ alle NP-vollständig
+
+    \note{
+        \begin{itemize}
+            \item kann mit leichter Änderung der Konstruktion gezeigt werden
+        \end{itemize}
+    }
+\end{frame}
+
+
+\begin{frame}{\LP}
+    \begin{exampleblock}{\LP{} -- Berechnungsvariante}
+        \alert{Eingabe:} Ein Graph $G = (V,E)$ und $K \in \mathbb{N}_+, K \leq |V|$.
+
+        \alert{Ausgabe:} Enthält $G$ einen Pfad ohne Knotenwiederholung mit mindestens $K$ Kanten?
+    \end{exampleblock}
+
+    Beweisidee: Reduktion von \HP{} mit:
+    \begin{gather*}
+    (V,E) \in \HP  \\
+    \iff  \\
+    ((V,E),|V|-1) \in \LP
+    \end{gather*}
+
+    \vfill
+    \pause
+
+    \begin{exampleblock}{\LP{} -- Optimierungsvariante}
+        \alert{Eingabe:} Ein Graph $G = (V,E)$.
+
+        \alert{Ausgabe:} Längster Pfad ohne Knotenwiederholung in $G$.
+    \end{exampleblock}
+
+    \note{
+        \begin{itemize}
+            \item ähnliches Problem
+            \item unintuitiv, da Shortest Path zw. zwei Knoten in P (Dijkstra, $A^*$)
+            \item wirkt intuitiv sei, als seie das nützlichere Problem leichter zu lösen,  \\
+                schön, aber unerwartet
+        \end{itemize}
+    }
+\end{frame}
+
+\begin{frame}{Zusammenfassung}
+    \begin{itemize}
+        \setlength{\itemsep}{1em}
+        \item \HC{} ist NP-vollständig
+        \item Reduktion von \VC{}
+        \item Varianten und verwandte Probleme
+    \end{itemize}
+\end{frame}
+
+\end{document}

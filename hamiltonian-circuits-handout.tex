@@ -1,0 +1,121 @@
+\documentclass[a4paper,14pt]{scrartcl}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[ngerman]{babel}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+\usepackage{csquotes}
+
+\usepackage[backend=biber,style=authoryear]{biblatex}
+\addbibresource{literatur.bib}
+
+\usepackage{lmodern}
+
+\usepackage{scrlayer-scrpage}
+
+
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{csquotes}
+\usepackage{array}
+\usepackage{mathtools}
+\usepackage{tikz}
+\usetikzlibrary{automata,positioning,arrows,shapes,decorations,calc}
+
+\DeclareSymbolFont{letters}{OML}{ztmcm}{m}{it}
+
+% https://tex.stackexchange.com/questions/66154/how-to-construct-a-coloured-box-with-rounded-corners
+\usepackage{tcolorbox}
+% \newtcolorbox{definition}[1]{colback=lightgray!5!white,colframe=lightgray!75!black,fonttitle=\bfseries,title=#1}
+\newtcolorbox{definition}[1]{colback=blue!5!white,colframe=blue!75!black,fonttitle=\bfseries,title=#1}
+\newtcolorbox{example}[1]{colback=green!5!white,colframe=green!75!black,fonttitle=\bfseries,title=#1}
+
+\newcommand{\VC}{\textsc{Vertex Cover}}
+\newcommand{\HC}{\textsc{Hamiltonian Cycle}}
+
+\pagestyle{empty}
+
+
+\begin{document}
+
+\section*{NP-Vollständigkeit von Hamiltonian Cycles}
+
+\begin{definition}{\VC{}}
+    \emph{Eingabe:} Ein Graph $G = (V,E)$ und $K \in \mathbb{N}_+$ mit $K \leq |V|$.
+
+    \emph{Ausgabe:} Existiert ein \emph{Vertex Cover} der Größe maximal $K$ für $G$?  \\
+    D.\,h. eine Menge $V'\subseteq V$ mit
+    \begin{minipage}[t]{\linewidth}
+        \begin{itemize}
+            \item $|V'| \leq K$
+            \item $\displaystyle
+                \forall \, \{u,v\} \in E: \; u \in V' \quad \lor \quad v \in V'
+                $
+        \end{itemize}
+    \end{minipage}
+\end{definition}
+
+\vfill
+
+\begin{definition}{\HC{}}
+    \emph{Eingabe:} Ein Graph $G = (V,E)$
+
+    \emph{Ausgabe:} Enthält $G$ einen \emph{Hamiltonian Cycle}?  \\
+    D.\,h. eine Knoten-Folge $(v_1,v_2,\dots,v_n)$ mit
+    \[
+        n = |V|; \qquad
+        \forall \, i \in \mathbb{N}, 1\leq i < n: \; \{v_i,v_{i+1}\} \in E \text{ und } \{v_n,v_1\} \in E
+    \]
+\end{definition}
+
+\vfill
+
+\begin{example}{Konstruktion $\VC \preceq_L \HC$}
+    \emph{Eingabe:} Graph $G = (V,E)$ und $K \in \mathbb{N}_+, K \leq |V|$
+
+    \emph{Ausgabe:} Graph $G' = (V',E')$,
+    sodass
+    \[
+        (G,K) \in \VC \iff G' \in \HC
+    \]
+
+    \[
+        V' =  \underbrace{
+                \left\{ a_i \mid 1 \leq i \leq K \right\} 
+            }_{\text{Selektor}}
+            \cup \underbrace{
+                \left( \bigcup_{e = \{ u,v \} \in E} V'_e \right)
+            }_{\text{Cover-Testing}}
+        \qquad \quad
+        E' = \underbrace{
+                \left( \bigcup_{e = \{ u,v \} \in E} E'_e \right)
+            }_{\text{Cover-Testing}}
+            \cup \left( \bigcup_{v \in V} E'_v \right) \cup E''
+    \]
+
+    \[
+        \begin{aligned}[t]
+            % V' &=  \underbrace{
+            %         \left\{ a_i \mid 1 \leq i \leq K \right\} 
+            %     }_{\text{Selektor}}
+            %     \cup \underbrace{
+            %         \left( \bigcup_{e\in E} V'_e \right)
+            %     }_{\text{Cover-Testing}}  \\
+            % E' &= \underbrace{
+            %         \left( \bigcup_{e \in E} E'_e \right)
+            %     }_{\text{Cover-Testing}}
+            %     \cup \left( \bigcup_{v \in V} E'_v \right) \cup E''  \\
+            V'_e &= \left\{ (u,e,i), (v,e,i) \mid 1 \leq i \leq 6 \right\}  \\
+            E'_e &= \Big\{ \{ (u,e,i), (u,e,i+1) \}, \{ (v,e,i), (v,e,i+1) \} \mid 1 \leq i \leq 5 \Big\}  \\
+                 &\qquad \cup \Big\{ \{ (u,e,3), (v,e,1) \}, \{ (v,e,3), (u,e,1) \} \Big\}  \\
+                 &\qquad \cup \Big\{ \{ (u,e,6), (v,e,4) \}, \{ (v,e,6), (u,e,4) \} \Big\}  \\
+            E'_v &= \Big\{ \{ (v,e_{v[i]},6), (v,e_{v[i+1]},1) \} \mid 1 \leq i < deg(v) \Big\}  \\
+            E'' &= \Big\{ \{ a_i, (v,e_{v[1]},1) \}, \; \{ a_i, (v, e_{v[deg(v)]},6) \} \mid 1 \leq i \leq K, v \in V \Big\}
+        \end{aligned}
+    \]
+\end{example}
+
+\end{document}
